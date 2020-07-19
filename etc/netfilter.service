@@ -1,0 +1,25 @@
+[Unit]
+Description=netfilter startup
+Wants=network-online.target
+After=network.target network-online.target
+
+[Service]
+WorkingDirectory=/home/netfilter
+Type=simple
+User=root
+
+ExecStartPre=-/etc/init.d/network-manager stop
+ExecStartPre=-/etc/init.d/wicd stop
+ExecStartPre=-/bin/systemctl stop dhcpcd.service
+ExecStartPre=-/usr/bin/pkill dhcpd
+ExecStartPre=-/usr/bin/pkill dhclient
+
+ExecStart=/home/netfilter/bin/netfilter.script start
+ExecStop=/home/netfilter/bin/netfilter.script stop
+
+RemainAfterExit=no
+RestartSec=240
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

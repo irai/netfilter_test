@@ -1,0 +1,17 @@
+[Unit]
+Description=netfilter download updates
+Wants=network-online.target
+After=network.target network-online.target
+
+[Service]
+WorkingDirectory=/home/netfilter/netfilter_bin
+Type=oneshot
+User=root
+
+ExecStart=/home/netfilter/bin/download.script start
+ExecStop=/home/netfilter/bin/download.script stop
+
+#TimeoutSec=240
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,25 @@
+#!/bin/sh
+#
+# This scrip is called by systemd
+# see: /etc/systemd/system/download.service
+#
+# To enable the service:
+# sudo systemctl enable download
+#
+# To start the service manually
+# sudo systemctl start download
+#
+#
+
+start() {
+      bash ./setup.sh
+}
+
+stop() {
+}
+
+case $1 in
+  start|stop) "$1" ;;
+esac
+
+

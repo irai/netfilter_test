@@ -1,0 +1,33 @@
+#!/bin/sh
+#
+# This scrip is called by systemd
+# see: /etc/systemd/system/netfilter.service
+#
+# To enable the service:
+# sudo systemctl enable netfilter.service
+#
+# To start the service manually
+# sudo systemctl start netfilter.service
+#
+#
+IFF=eth0
+GW=blockthekids.com:443
+HOME=/home/netfilter
+  
+start() {
+  echo "Starting netfilter"
+  mkdir $HOME/private
+  chmod 0700 $HOME/private
+
+  exec $HOME/bin/netfilter -i $IFF -gw $GW -script $HOME/bin/firewall.sh 
+}
+
+stop() {
+  exec pkill netfilter
+}
+
+case $1 in
+  start|stop) "$1" ;;
+esac
+
+
