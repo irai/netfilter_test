@@ -12,10 +12,11 @@
 #
 
 start() {
-      bash /home/netfilter/netfilter_prod/setup.sh
+      bash /home/netfilter/netfilter_prod/etc/setup.sh
 }
 
 stop() {
+  echo "stopping"
 }
 
 case $1 in

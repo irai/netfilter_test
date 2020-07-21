@@ -98,7 +98,7 @@ if [ -f "$HOME/bin/MODE" ]; then
 fi
 
 # update main repo
-gitPullFunction $HOME/netfilter_prod $gitprod
+UPDATED=`gitPullFunction $HOME/netfilter_prod $gitprod`
 if [ $? -ne 0 ]; then
 echo "failed to pull $HOME/netfilter_prod"
 exit 1
@@ -110,7 +110,7 @@ TARGET=${HOME}/netfilter_prod
 NEWMODE=`setRuntimeEnvironmentFunction`
 if [ "$NEWMODE" == "test" ]; then
   echo "updating test repo"
-  gitPullFunction $HOME/netfilter_test $gittest
+  UPDATED=`gitPullFunction $HOME/netfilter_test $gittest`
   if [ $? -ne 0 ]; then 
     echo "failed to pull $HOME/netfilter_test"
     exit 1
@@ -153,7 +153,7 @@ if [ $? -ne 0 ]; then
   NEWVERSION="noversion"
 fi
 
-if [ "$CURVERSION" == "$NEWVERSION" ] && [ "$CURMODE" == "$NEWMODE" ]; then
+if [ "$CURVERSION" == "$NEWVERSION" ] && [ "$CURMODE" == "$NEWMODE" ] && [ "$UPDATED" == "" ]; then
   echo "no changes to netfilter $CURVERSION $CURMODE. exiting..." 
   exit 0
 fi
