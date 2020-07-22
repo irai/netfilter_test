@@ -2,6 +2,7 @@
 Description=netfilter download every 10 minutes
 
 [Timer]
+OnStartupSec=0
 OnCalendar=*:0/10
 
 [Install]
