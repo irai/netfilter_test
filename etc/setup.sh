@@ -165,11 +165,11 @@ if [ "$CURVERSION" == "$NEWVERSION" ] && [ "$CURMODE" == "$NEWMODE" ] && [ "$COM
   echo "no changes to netfilter $CURVERSION $CURMODE. exiting..." 
   exit 0
 fi
-#echo "[$CURVERSION=$NEWVERSION   $CURMODE=$NEWMODE   CID=$COMMITID]"
 
 # create new links
 #
 echo "Configuring netfilter $NEWVERSION in $NEWMODE mode using $TARGET"
+echo "[version=$CURVERSION->$NEWVERSION   mode=$CURMODE->$NEWMODE   CID=$COMMITID]"
 
 rm ${HOME}/bin/netfilter 
 ln ${TARGET}/bin/netfilter ${HOME}/bin/netfilter # cannot be symlink so we don't overwrite in next git pull
