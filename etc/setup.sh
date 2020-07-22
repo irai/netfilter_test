@@ -161,7 +161,7 @@ if [ $? -ne 0 ]; then
   NEWVERSION="noversion"
 fi
 
-if [ "$CURVERSION" == "$NEWVERSION" ] && [ "$CURMODE" == "$NEWMODE" ] && [ "$UPDATED" == "" ]; then
+if [ "$CURVERSION" == "$NEWVERSION" ] && [ "$CURMODE" == "$NEWMODE" ] && [ "$COMMITID" == "" ]; then
   echo "no changes to netfilter $CURVERSION $CURMODE. exiting..." 
   exit 0
 fi
