@@ -181,6 +181,8 @@ rm -f ${HOME}/bin/download.script
 ln -s ${TARGET}/etc/download.script ${HOME}/bin/download.script
 rm -f ${HOME}/bin/firewall.sh
 ln -s ${TARGET}/etc/firewall.sh ${HOME}/bin/firewall.sh
+rm -f ${HOME}/bin/setup.sh
+ln -s ${TARGET}/etc/setup.sh ${HOME}/bin/setup.sh
 
 
 # setup systemd services

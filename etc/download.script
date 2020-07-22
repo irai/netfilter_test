@@ -12,7 +12,7 @@
 #
 
 start() {
-      bash /home/netfilter/netfilter_prod/etc/setup.sh
+      bash /home/netfilter/bin/setup.sh
 }
 
 stop() {
