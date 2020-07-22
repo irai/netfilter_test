@@ -6,7 +6,7 @@ After=network.target network-online.target
 [Service]
 WorkingDirectory=/home/netfilter
 Type=oneshot
-User=netfilter
+User=root
 
 ExecStart=/home/netfilter/bin/download.script start
 ExecStop=/home/netfilter/bin/download.script stop
