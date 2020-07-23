@@ -14,7 +14,7 @@ setRuntimeEnvironmentFunction() {
   #ifconfig | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p'
 
   # get default route
-  local defaultgw=`route | sed -En 's/default *(([0-9]*\.){3}[0-9]*).*/\1/p'`
+  local defaultgw=`route -n | sed -En 's/0\.0\.0\.0 *(([0-9]*\.){3}[0-9]*).*/\1/p'`
 
   if [[ -n "$defaultgw" ]]; then
     # get mac addr for default route 
