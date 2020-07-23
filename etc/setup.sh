@@ -28,8 +28,8 @@ setRuntimeEnvironmentFunction() {
       fi
     fi
 
-    clientTest=`sudo cat $HOME/private/config.yaml | grep 'mode: "test"'`
-    if [[ -n "$clientTest" ]]; then
+    clientTest=`sudo cat $HOME/private/config.yaml | sed -En 's/ *mode: *(test).*/\1/p'`
+    if [[  "$clientTest" == "test" ]]; then
         echo "test"
         return 0
       fi
