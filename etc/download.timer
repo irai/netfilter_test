@@ -2,8 +2,7 @@
 Description=netfilter download every 10 minutes
 
 [Timer]
-OnActiveSec=0
-OnCalendar=*:0/10
+OnCalendar=00/1:00
 
 [Install]
 WantedBy=multi-user.target
