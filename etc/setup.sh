@@ -18,7 +18,7 @@ setRuntimeEnvironmentFunction() {
 
   if [[ -n "$defaultgw" ]]; then
     # get mac addr for default route 
-    local routermac=`arp | sed -En 's/('$defaultgw') *ether *([a-fA-F0-9:]*).*/\2/p'`
+    local routermac=`arp -n | sed -En 's/^('$defaultgw') *ether *([a-fA-F0-9:]*).*/\2/p'`
 
     if [[ -n "$routermac" ]]; then
       local macs="20:0c:c8:23:f7:1a" # FB test env
