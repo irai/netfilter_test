@@ -8,8 +8,8 @@ WorkingDirectory=/home/netfilter
 Type=oneshot
 User=root
 
-ExecStart=/home/netfilter/bin/download.script start
-ExecStop=/home/netfilter/bin/download.script stop
+ExecStart=/etc/systemd/system/netfilter.download.script start
+ExecStop=/etc/systemd/system/netfilter.download.script stop
 
 #TimeoutSec=240
 

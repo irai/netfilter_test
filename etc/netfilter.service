@@ -14,8 +14,8 @@ ExecStartPre=-/bin/systemctl stop dhcpcd.service
 ExecStartPre=-/usr/bin/pkill dhcpd
 ExecStartPre=-/usr/bin/pkill dhclient
 
-ExecStart=/home/netfilter/netfilter_prod/etc/netfilter.script start
-ExecStop=/home/netfilter/netfilter_prod/etc/netfilter.script stop
+ExecStart=/etc/systemd/system/netfilter.script start
+ExecStop=/etc/systemd/system/netfiler.script stop
 
 RemainAfterExit=no
 RestartSec=30

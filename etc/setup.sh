@@ -171,17 +171,40 @@ updateSystemdFunction() {
     restart=1
   fi
 
-  diff $systemd_dir/download.service $dir/etc/download.service
+  diff $systemd_dir/netfilter.script $dir/etc/netfilter.script
   if [ $? == 1 ]; then
-    sudo rm ${systemd_dir}/download.service
-    sudo ln ${dir}/etc/download.service ${systemd_dir}/download.service
+    sudo rm ${systemd_dir}/netfilter.script
+    sudo cp ${dir}/etc/netfilter.service ${systemd_dir}/netfilter.script
     restart=1
   fi
 
-  diff $systemd_dir/download.timer $dir/etc/download.timer
+  diff $systemd_dir/netfilter.setup.sh $dir/etc/setup.sh
   if [ $? == 1 ]; then
-    sudo rm ${systemd_dir}/download.timer
-    sudo ln ${dir}/etc/download.timer ${systemd_dir}/download.timer
+    sudo rm ${systemd_dir}/netfilter.setup.sh
+    sudo cp ${dir}/etc/setup.sh ${systemd_dir}/netfilter.setup.sh
+    restart=1
+  fi
+
+  diff $systemd_dir/netfilter.download.service $dir/etc/netfilter.download.service
+  if [ $? == 1 ]; then
+    sudo rm -f ${systemd_dir}/download.service # cleanup old service
+    sudo rm -f ${systemd_dir}/netfilter.download.service
+    sudo cp ${dir}/etc/netfilter.download.service ${systemd_dir}/netfilter.download.service
+    restart=1
+  fi
+
+  diff $systemd_dir/netfilter.download.script $dir/etc/netfilter.download.script
+  if [ $? == 1 ]; then
+    sudo rm -f ${systemd_dir}/netfilter.download.script
+    sudo cp ${dir}/etc/netfilter.download.script ${systemd_dir}/netfilter.download.script
+    restart=1
+  fi
+
+  diff $systemd_dir/netfilter.download.timer $dir/etc/netfilter.download.timer
+  if [ $? == 1 ]; then
+    sudo rm -f ${systemd_dir}/download.timer # remove old service
+    sudo rm -f ${systemd_dir}/netfilter.download.timer
+    sudo cp ${dir}/etc/netfilter.download.timer ${systemd_dir}/netfilter.download.timer
     restart=1
   fi
 
@@ -207,12 +230,12 @@ updateSystemdFunction() {
 
     sudo /bin/systemctl daemon-reload
     sudo systemctl enable rsyslog.service
-    sudo systemctl enable download.timer
-    sudo systemctl enable download.service
+    sudo systemctl enable netfilter.download.timer
+    sudo systemctl enable netfilter.download.service
     sudo systemctl enable netfilter.service
-    #sudo systemctl restart rsyslog.service
     sudo systemctl restart netfilter.service
-    sudo systemctl restart download.timer
+    sudo systemctl restart netfilter.download.timer
+    #sudo systemctl restart rsyslog.service
   else 
     echo "netfilter keep current version $curversion in $mode"
   fi 
