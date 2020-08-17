@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # This scrip is called by systemd
 # see: /etc/systemd/system/netfilter.service
@@ -11,15 +11,84 @@
 #
 #
 IFF=eth0
-GW=blockthekids.com:443
-HOME=/home/netfilter
+NETFILTER=/home/netfilter
+CONFIG=$NETFILTER/private/config.yaml
+FIREWALL=$NETFILTER/netfilter_prod/bin/firewall.sh
   
-start() {
-  echo "Starting netfilter"
-  mkdir $HOME/private
-  chmod 0700 $HOME/private
+git config --global user.email "irai852@gmail.com"
+git config --global user.name "Irai"
+gitprod="https://github.com/irai/netfilter_prod.git"
+gittest="https://github.com/irai/netfilter_test.git"
 
-  exec $HOME/bin/netfilter -i $IFF -gw $GW -script $HOME/bin/firewall.sh 
+# gitPull refresh the git repo
+# $1 - repo location
+# $2 - repo url
+gitPullFunction() {
+  local dir=$1
+  local repo=$2
+  if [ ! -d "$dir" ]; then
+    pushd "$(dirname "$dir")"
+
+    git clone $repo
+    OK=$?
+    popd
+    if [ $OK -ne 0 ]; then
+      echo "failed to clone $repo"
+      rm -rf "$dir"
+      return 1
+    fi
+    return 0
+  else
+    pushd $dir
+    if [ $? -ne 0 ]; then
+      echo "invalid git repo $dir"
+      return 1
+    fi
+    git fetch
+    if [ $? -ne 0 ]; then
+      echo "failed to fetch repo $dir"
+      popd
+      return 1
+    fi
+    local gitwork=`git cherry master origin/master`
+    if [ $? -ne 0 ]; then
+      echo "failed to cherry pick repo $dir"
+      popd
+      return 1
+    fi
+    if [ "$gitwork" != "" ]; then
+      git merge
+      if [ $? -ne 0 ]; then
+        echo "failed to merge pick repo $dir"
+        popd
+        return 1
+      fi
+    fi
+    echo $gitwork
+    popd
+    return 0
+  fi
+}
+
+start() {
+  # default to prod functions
+  source $NETFILTER/netfilter_prod/etc/setup.sh
+
+  mode=`getModeFunction`
+
+  if [ "$mode" == "test" ]; then
+    local BINARY=$DIR_TEST/bin/netfilter
+    local GW=$GW_TEST
+  elif [ "$mode" == "beta" ]; then
+    local BINARY=$DIR_BETA/bin/netfilter
+    local GW=$GW_BETA
+  else
+    local BINARY=$DIR_PROD/bin/netfilter
+    local GW=$GW_PROD
+  fi
+
+  echo "Starting netfilter $BINARY -i $IFF -gw $GW -script $FIREWALL"
+  exec $BINARY -i $IFF -gw $GW -script $HOME/bin/firewall.sh 
 }
 
 stop() {

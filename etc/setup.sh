@@ -1,11 +1,22 @@
 #!/bin/bash
 
-HOME=/home/netfilter
+NETFILTER=/home/netfilter
 
-git config --global user.email "irai852@gmail.com"
-git config --global user.name "Irai"
-gitprod="https://github.com/irai/netfilter_prod.git"
-gittest="https://github.com/irai/netfilter_test.git"
+sudo git config --global user.email "irai852@gmail.com"
+sudo git config --global user.name "Irai"
+
+DIR_PROD=$NETFILTER/netfilter_prod
+GW_PROD=blockthekids.com:443
+GIT_PROD="https://github.com/irai/netfilter_prod.git"
+
+DIR_BETA=$NETFILTER/netfilter_beta
+GW_BETA=blockthekids.com:443
+GIT_BETA="https://github.com/irai/netfilter_beta.git"
+
+DIR_TEST=$NETFILTER/netfilter_test
+GW_TEST=blockthekids.com:8080
+GIT_TEST="https://github.com/irai/netfilter_test.git"
+
 
 # check router mac and config file for test mode
 # return "prod" or "test"
@@ -14,11 +25,11 @@ setRuntimeEnvironmentFunction() {
   #ifconfig | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p'
 
   # get default route
-  local defaultgw=`route -n | sed -En 's/^0\.0\.0\.0 *(([0-9]*\.){3}[0-9]*).*/\1/p'`
+  local defaultgw=`route | sed -En 's/default *(([0-9]*\.){3}[0-9]*).*/\1/p'`
 
   if [[ -n "$defaultgw" ]]; then
     # get mac addr for default route 
-    local routermac=`arp -n | sed -En 's/^('$defaultgw') *ether *([a-fA-F0-9:]*).*/\2/p'`
+    local routermac=`arp | sed -En 's/('$defaultgw') *ether *([a-fA-F0-9:]*).*/\2/p'`
 
     if [[ -n "$routermac" ]]; then
       local macs="20:0c:c8:23:f7:1a" # FB test env
@@ -28,8 +39,8 @@ setRuntimeEnvironmentFunction() {
       fi
     fi
 
-    clientTest=`sudo cat $HOME/private/config.yaml | sed -En 's/ *mode: *(test).*/\1/p'`
-    if [[  "$clientTest" == "test" ]]; then
+    clientTest=`sudo cat $NETFILTER/private/config.yaml | grep 'mode: "test"'`
+    if [[ -n "$clientTest" ]]; then
         echo "test"
         return 0
       fi
@@ -45,174 +56,184 @@ gitPullFunction() {
   local dir=$1
   local repo=$2
   if [ ! -d "$dir" ]; then
-    pushd "$(dirname "$dir")" > /dev/null
+    pushd "$(dirname "$dir")"
 
     git clone $repo
     OK=$?
-    popd > /dev/null
+    popd
     if [ $OK -ne 0 ]; then
       echo "failed to clone $repo"
       rm -rf "$dir"
       return 1
     fi
-    echo "commit id: `git rev-parse HEAD`"
     return 0
   else
-    pushd $dir > /dev/null
+    pushd $dir
     if [ $? -ne 0 ]; then
       echo "invalid git repo $dir"
       return 1
     fi
-    local cid=`git rev-parse HEAD`
     git fetch
     if [ $? -ne 0 ]; then
       echo "failed to fetch repo $dir"
-      popd > /dev/null
+      popd
       return 1
     fi
     local gitwork=`git cherry master origin/master`
     if [ $? -ne 0 ]; then
       echo "failed to cherry pick repo $dir"
-      popd > /dev/null
+      popd
       return 1
     fi
     if [ "$gitwork" != "" ]; then
       git merge
       if [ $? -ne 0 ]; then
         echo "failed to merge pick repo $dir"
-        popd > /dev/null
+        popd
         return 1
       fi
     fi
-    local newcid=`git rev-parse HEAD`
-    if [ "$cid" != "$newcid" ]; then
-       echo "$cid!=$newcid"
-    else
-       echo ""
-    fi
-    popd > /dev/null
+    echo $gitwork
+    popd
     return 0
   fi
 }
 
-
-CURMODE="prod"
-if [ -f "$HOME/bin/MODE" ]; then
-  OK=`cat "$HOME/bin/MODE"`
-  if [ "$OK" == "test" ]; then
-    CURMODE="test"
+getModeFunction() {
+  local mode=prod
+  if [ -f "$NETFILTER/private/config.yaml" ]; then
+    mode=`sudo cat $NETFILTER/private/config.yaml | sed -En 's/ *mode: *\"*([a-fA-F]*)\"*/\1/p'`
+    if [ "$mode" != "test" ] && [ "$mode" != "beta" ] && [ "$mode" != "prod" ]; then
+        mode=prod
+    fi
   fi
-fi
+  echo $mode
+}
 
-# update main repo
-echo "updating prod repo - $gitprod"
-COMMITID=`gitPullFunction $HOME/netfilter_prod $gitprod`
-if [ $? -ne 0 ]; then
-echo "failed to pull $HOME/netfilter_prod"
-exit 1
-fi
+updateRepositoriesFunction() {
+  local mode=$1
 
-TARGET=${HOME}/netfilter_prod
-
-# check if we are in testing mode
-NEWMODE=`setRuntimeEnvironmentFunction`
-if [ "$NEWMODE" == "test" ]; then
-  echo "updating test repo - $gittest"
-  COMMITID=`gitPullFunction $HOME/netfilter_test $gittest`
-  if [ $? -ne 0 ]; then 
-    echo "failed to pull $HOME/netfilter_test"
-    exit 1
+  gitPullFunction $DIR_PROD $GIT_PROD
+  if [ $? -ne 0 ]; then
+    echo "failed to pull $NETFILTER/netfilter_prod $?"
   fi
-  TARGET=${HOME}/netfilter_test
-fi
 
-if [ ! -d "$HOME/bin" ]; then
-  mkdir $HOME/bin
-fi
+  if [ "$mode" == "test" ]; then
+    gitPullFunction $DIR_TEST $GIT_TEST
+    if [ $? -ne 0 ]; then
+      echo "failed to pull $DIR_TEST $GIT_TEST $?"
+    fi
+  elif [ "$mode" == "beta" ]; then
+    gitPullFunction $DIR_BETA $GIT_BETA
+    if [ $? -ne 0 ]; then
+      echo "failed to pull $DIR_BETA $GIT_BETA $?"
+    fi
+  fi
+}
 
-if [ ! -d "$TARGET" ]; then
-  echo "directory $TARGET does not exist"
-  exit 1
-fi
-
-if [ ! -f "$TARGET/bin/netfilter" ]; then
-    echo "new netfilter does not exist $TARGET/bin/netfilter"
-    exit 1
-fi
-
-# current version 
-if [ ! -f "$HOME/bin/netfilter" ] && [ ! -L "$HOME/bin/netfilter" ]; then
-    echo "current netfilter does not exist $HOME/bin/netfilter"
-    exit 1
-fi
-
-# Convert symlink to link if needed
-if [ -L "$HOME/bin/netfilter" ]; then
-  cp --remove-destination `sudo readlink $HOME/bin/netfilter` $HOME/bin/netfilter
-fi
-
-CURVERSION=`$HOME/bin/netfilter -v`
-if [ $? -ne 0 ]; then
-  CURVERSION="noversion"
-fi
-
-NEWVERSION=`$TARGET/bin/netfilter -v`
-if [ $? -ne 0 ]; then
-  NEWVERSION="noversion"
-fi
-
-if [ "$CURVERSION" == "$NEWVERSION" ] && [ "$CURMODE" == "$NEWMODE" ] && [ "$COMMITID" == "" ]; then
-  echo "no changes to netfilter $CURVERSION $CURMODE. exiting..." 
-  exit 0
-fi
 
 # create new links
 #
-echo "Configuring netfilter $NEWVERSION in $NEWMODE mode using $TARGET"
-echo "[version=$CURVERSION->$NEWVERSION   mode=$CURMODE->$NEWMODE   CID=$COMMITID]"
+#echo "Configuring netfilter $NEWVERSION in $NEWMODE mode using $TARGET"
 
-rm ${HOME}/bin/netfilter 
-ln ${TARGET}/bin/netfilter ${HOME}/bin/netfilter # cannot be symlink so we don't overwrite in next git pull
-echo "$NEWMODE" > ${HOME}/bin/MODE
+#rm ${NETFILTER}/bin/netfilter 
+#ln ${TARGET}/bin/netfilter ${NETFILTER}/bin/netfilter # cannot be symlink so we don't overwrite in next git pull
+#echo "$NEWMODE" > ${NETFILTER}/bin/MODE
 
-rm -f ${HOME}/bin/netfilter.script
-ln -s ${TARGET}/etc/netfilter.script ${HOME}/bin/netfilter.script
-rm -f ${HOME}/bin/download.script
-ln -s ${TARGET}/etc/download.script ${HOME}/bin/download.script
-rm -f ${HOME}/bin/firewall.sh
-ln -s ${TARGET}/etc/firewall.sh ${HOME}/bin/firewall.sh
-rm -f ${HOME}/bin/setup.sh
-ln -s ${TARGET}/etc/setup.sh ${HOME}/bin/setup.sh
+#rm -f ${NETFILTER}/bin/netfilter.script
+#ln -s ${TARGET}/etc/netfilter.script ${NETFILTER}/bin/netfilter.script
+#rm -f ${NETFILTER}/bin/download.script
+#ln -s ${TARGET}/etc/download.script ${NETFILTER}/bin/download.script
+#rm -f ${NETFILTER}/bin/firewall.sh
+#ln -s ${TARGET}/etc/firewall.sh ${NETFILTER}/bin/firewall.sh
 
 
 # setup systemd services
 #
-SYSTEMD_DIR=/etc/systemd/system
+updateSystemdFunction() {
+  local mode=$1
+  local curversion=$2
 
-sudo rm ${SYSTEMD_DIR}/netfilter.service
-sudo ln ${TARGET}/etc/netfilter.service ${SYSTEMD_DIR}/netfilter.service
-sudo rm ${SYSTEMD_DIR}/download.service
-sudo ln ${TARGET}/etc/download.service ${SYSTEMD_DIR}/download.service
-sudo rm ${SYSTEMD_DIR}/download.timer
-sudo ln ${TARGET}/etc/download.timer ${SYSTEMD_DIR}/download.timer
+  local systemd_dir=/etc/systemd/system
 
-# DONT update syslogd with unique mac
-loggly=/etc/rsyslog.d/22-loggly.conf
-if [ -f "$loggly" ]; then
-  sudo rm $loggly
+  local dir=$DIR_PROD
+  if [ "$mode" == "beta" ]; then 
+    dir=$DIR_BETA
+  elif [ "$mode" == "test" ]; then
+    dir=$DIR_TEST
+  fi
+     
+  local restart=0
+  diff $systemd_dir/netfilter.service $dir/etc/netfilter.service
+  if [ $? == 1 ]; then
+    sudo rm ${systemd_dir}/netfilter.service
+    sudo ln ${dir}/etc/netfilter.service ${systemd_dir}/netfilter.service
+    restart=1
+  fi
+
+  diff $systemd_dir/download.service $dir/etc/download.service
+  if [ $? == 1 ]; then
+    sudo rm ${systemd_dir}/download.service
+    sudo ln ${dir}/etc/download.service ${systemd_dir}/download.service
+    restart=1
+  fi
+
+  diff $systemd_dir/download.timer $dir/etc/download.timer
+  if [ $? == 1 ]; then
+    sudo rm ${systemd_dir}/download.timer
+    sudo ln ${dir}/etc/download.timer ${systemd_dir}/download.timer
+    restart=1
+  fi
+
+  # DONT update syslogd with unique mac
+  loggly=/etc/rsyslog.d/22-loggly.conf
+  if [ -f "$loggly" ]; then
+    sudo rm $loggly
+  fi
+
+  newversion=`${NETFILTER}/netfilter_${mode}/bin/netfilter -v`
+  if [ $? -ne 0 ]; then
+    newversion="noversion"
+  fi
+
+  if [ "$curversion" != "$newversion" ]; then
+    restart=1
+  fi
+
+  if [ $restart -eq 1 ]; then
+    echo "netfilter updated to $curversion in $mode. Restarting...."
+
+    exit 
+
+    sudo /bin/systemctl daemon-reload
+    sudo systemctl enable rsyslog.service
+    sudo systemctl enable download.timer
+    sudo systemctl enable download.service
+    sudo systemctl enable netfilter.service
+    #sudo systemctl restart rsyslog.service
+    sudo systemctl restart netfilter.service
+    sudo systemctl restart download.timer
+  else 
+    echo "netfilter keep current version $curversion in $mode"
+  fi 
+}
+
+if [ ! -d "$NETFILTER/private" ]; then
+  mkdir $NETFILTER/private
+  chmod 0700 $NETFILTER/private
 fi
-#mac=`ifconfig -a eth0 | awk '/ether/ { print $2 } ' | sed 's/://g'`
-#if test -z "$mac"  ; then mac="mac_unknown"; fi
-#cat ${TARGET}/etc/22-loggly.conf | sudo sed 's/MAC_ADDRESS/'$mac'/g' > ./tmp.conf
-#sudo mv ./tmp.conf /etc/rsyslog.d/22-loggly.conf
 
-sudo /bin/systemctl daemon-reload
+echo "private $NETFILTER/private"
+ls -l ${NETFILTER}/private
+    
+mode=`getModeFunction`
+echo "mode $mode"
 
-sudo systemctl enable rsyslog.service
-sudo systemctl enable download.timer
-sudo systemctl enable download.service
-sudo systemctl enable netfilter.service
-#sudo systemctl restart rsyslog.service
-sudo systemctl restart netfilter.service
-sudo systemctl restart download.timer
+curversion=`$NETFILTER/netfilter_$mode/bin/netfilter -v`
+if [ $? -ne 0 ]; then
+  curversion="noversion"
+fi
+
+updateRepositoriesFunction $mode
+updateSystemdFunction $mode $curversion
 
