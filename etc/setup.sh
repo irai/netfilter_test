@@ -1,108 +1,9 @@
 #!/bin/bash
 
-NETFILTER=/home/netfilter
-
-sudo git config --global user.email "irai852@gmail.com"
-sudo git config --global user.name "Irai"
-
-DIR_PROD=$NETFILTER/netfilter_prod
-GW_PROD=blockthekids.com:443
-GIT_PROD="https://github.com/irai/netfilter_prod.git"
-
-DIR_BETA=$NETFILTER/netfilter_beta
-GW_BETA=blockthekids.com:443
-GIT_BETA="https://github.com/irai/netfilter_beta.git"
-
-DIR_TEST=$NETFILTER/netfilter_test
-GW_TEST=blockthekids.com:8080
-GIT_TEST="https://github.com/irai/netfilter_test.git"
-
-
-# check router mac and config file for test mode
-# return "prod" or "test"
-setRuntimeEnvironmentFunction() {
-  # get local IP address
-  #ifconfig | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p'
-
-  # get default route
-  local defaultgw=`route | sed -En 's/default *(([0-9]*\.){3}[0-9]*).*/\1/p'`
-
-  if [[ -n "$defaultgw" ]]; then
-    # get mac addr for default route 
-    local routermac=`arp | sed -En 's/('$defaultgw') *ether *([a-fA-F0-9:]*).*/\2/p'`
-
-    if [[ -n "$routermac" ]]; then
-      local macs="20:0c:c8:23:f7:1a" # FB test env
-      if [[ $macs == *"$routermac"* ]]; then
-        echo "test"
-        return 0
-      fi
-    fi
-
-    clientTest=`sudo cat $NETFILTER/private/config.yaml | grep 'mode: "test"'`
-    if [[ -n "$clientTest" ]]; then
-        echo "test"
-        return 0
-      fi
-  fi
-  echo "prod"
-  return 0
-}
-
-# gitPull refresh the git repo
-# $1 - repo location
-# $2 - repo url
-gitPullFunction() {
-  local dir=$1
-  local repo=$2
-  if [ ! -d "$dir" ]; then
-    pushd "$(dirname "$dir")"
-
-    git clone $repo
-    OK=$?
-    popd
-    if [ $OK -ne 0 ]; then
-      echo "failed to clone $repo"
-      rm -rf "$dir"
-      return 1
-    fi
-    return 0
-  else
-    pushd $dir
-    if [ $? -ne 0 ]; then
-      echo "invalid git repo $dir"
-      return 1
-    fi
-    git fetch
-    if [ $? -ne 0 ]; then
-      echo "failed to fetch repo $dir"
-      popd
-      return 1
-    fi
-    local gitwork=`git cherry master origin/master`
-    if [ $? -ne 0 ]; then
-      echo "failed to cherry pick repo $dir"
-      popd
-      return 1
-    fi
-    if [ "$gitwork" != "" ]; then
-      git merge
-      if [ $? -ne 0 ]; then
-        echo "failed to merge pick repo $dir"
-        popd
-        return 1
-      fi
-    fi
-    echo $gitwork
-    popd
-    return 0
-  fi
-}
-
 getModeFunction() {
   local mode=prod
   if [ -f "$NETFILTER/private/config.yaml" ]; then
-    mode=`sudo cat $NETFILTER/private/config.yaml | sed -En 's/ *mode: *\"*([a-fA-F]*)\"*/\1/p'`
+    mode=`cat $NETFILTER/private/config.yaml | sed -En 's/ *mode: *\"*([a-fA-F]*)\"*/\1/p'`
     if [ "$mode" != "test" ] && [ "$mode" != "beta" ] && [ "$mode" != "prod" ]; then
         mode=prod
     fi
@@ -110,153 +11,144 @@ getModeFunction() {
   echo $mode
 }
 
-updateRepositoriesFunction() {
-  local mode=$1
-
-  gitPullFunction $DIR_PROD $GIT_PROD
-  if [ $? -ne 0 ]; then
-    echo "failed to pull $NETFILTER/netfilter_prod $?"
-  fi
-
-  if [ "$mode" == "test" ]; then
-    gitPullFunction $DIR_TEST $GIT_TEST
-    if [ $? -ne 0 ]; then
-      echo "failed to pull $DIR_TEST $GIT_TEST $?"
-    fi
-  elif [ "$mode" == "beta" ]; then
-    gitPullFunction $DIR_BETA $GIT_BETA
-    if [ $? -ne 0 ]; then
-      echo "failed to pull $DIR_BETA $GIT_BETA $?"
-    fi
-  fi
-}
-
-
-# create new links
-#
-#echo "Configuring netfilter $NEWVERSION in $NEWMODE mode using $TARGET"
-
-#rm ${NETFILTER}/bin/netfilter 
-#ln ${TARGET}/bin/netfilter ${NETFILTER}/bin/netfilter # cannot be symlink so we don't overwrite in next git pull
-#echo "$NEWMODE" > ${NETFILTER}/bin/MODE
-
-#rm -f ${NETFILTER}/bin/netfilter.script
-#ln -s ${TARGET}/etc/netfilter.script ${NETFILTER}/bin/netfilter.script
-#rm -f ${NETFILTER}/bin/download.script
-#ln -s ${TARGET}/etc/download.script ${NETFILTER}/bin/download.script
-#rm -f ${NETFILTER}/bin/firewall.sh
-#ln -s ${TARGET}/etc/firewall.sh ${NETFILTER}/bin/firewall.sh
-
-
 # setup systemd services
 #
-updateSystemdFunction() {
-  local mode=$1
-  local curversion=$2
+setup() {
 
   local systemd_dir=/etc/systemd/system
 
-  local dir=$DIR_PROD
-  if [ "$mode" == "beta" ]; then 
-    dir=$DIR_BETA
-  elif [ "$mode" == "test" ]; then
-    dir=$DIR_TEST
+  if [ ! -d "$NETFILTER/bin" ]; then
+    mkdir $NETFILTER/bin
+    chmod 0770 $NETFILTER/bin
   fi
-     
+
+  local mode=`getModeFunction`
+  local dir=$NETFILTER/netfilter_${mode}
+
+  # fail to prod if not available
+  #
+  if [ ! -d "$dir" ]; then
+    mode=prod
+    dir=$NETFILTER/netfilter_prod
+  fi
+
   local restart=0
-  diff -q $systemd_dir/netfilter.service $dir/etc/netfilter.service
+  diff -q ${systemd_dir}/netfilter.service ${dir}/etc/netfilter.service
   if [ $? != 0 ]; then
-    sudo rm -f ${systemd_dir}/netfilter.service
-    sudo ln ${dir}/etc/netfilter.service ${systemd_dir}/netfilter.service
+    rm -f ${systemd_dir}/netfilter.service
+    ln ${dir}/etc/netfilter.service ${systemd_dir}/netfilter.service
     restart=1
   fi
 
-  diff -q $systemd_dir/netfilter.script $dir/etc/netfilter.script
+  diff -q $NETFILTER/bin/setup.sh ${dir}/etc/setup.sh
   if [ $? != 0 ]; then
-    sudo rm -f ${systemd_dir}/netfilter.script
-    sudo cp ${dir}/etc/netfilter.service ${systemd_dir}/netfilter.script
+    rm -f ${NETFILTER}/bin/setup.sh
+    cp ${dir}/etc/setup.sh ${NETFILTER}/bin/setup.sh
+    chmod +x ${NETFILTER}/bin/setup.sh
     restart=1
   fi
 
-  diff -q $systemd_dir/netfilter.setup.sh $dir/etc/setup.sh
+  rm -f ${systemd_dir}/netfilter.script # no longer needed
+  rm -f ${dir}/bin/netfilter.script # no longer needed
+  #diff -q ${systemd_dir}/netfilter.script ${dir}/etc/netfilter.script
+  #if [ $? != 0 ]; then
+    #rm -f ${systemd_dir}/netfilter.script
+    #cp ${dir}/etc/netfilter.service ${systemd_dir}/netfilter.script
+    #restart=1
+  #fi
+
+
+  diff -q ${systemd_dir}/netfilter.download.service ${dir}/etc/netfilter.download.service
   if [ $? != 0 ]; then
-    sudo rm -f ${systemd_dir}/netfilter.setup.sh
-    sudo cp ${dir}/etc/setup.sh ${systemd_dir}/netfilter.setup.sh
+    rm -f ${systemd_dir}/download.service # cleanup old service
+    rm -f ${systemd_dir}/netfilter.download.service
+    cp ${dir}/etc/netfilter.download.service ${systemd_dir}/netfilter.download.service
     restart=1
   fi
 
-  diff -q $systemd_dir/netfilter.download.service $dir/etc/netfilter.download.service
+  diff -q $NETFILTER/bin/netfilter.download.script ${dir}/etc/netfilter.download.script
   if [ $? != 0 ]; then
-    sudo rm -f ${systemd_dir}/download.service # cleanup old service
-    sudo rm -f ${systemd_dir}/netfilter.download.service
-    sudo cp ${dir}/etc/netfilter.download.service ${systemd_dir}/netfilter.download.service
+    rm -f ${NETFILTER}/bin/netfilter.download.script
+    cp ${dir}/etc/netfilter.download.script ${NETFILTER}/bin/netfilter.download.script
+    chmod +x ${NETFILTER}/bin/netfilter.download.script
     restart=1
   fi
 
-  diff -q $systemd_dir/netfilter.download.script $dir/etc/netfilter.download.script
+  diff -q ${systemd_dir}/netfilter.download.timer ${dir}/etc/netfilter.download.timer
   if [ $? != 0 ]; then
-    sudo rm -f ${systemd_dir}/netfilter.download.script
-    sudo cp ${dir}/etc/netfilter.download.script ${systemd_dir}/netfilter.download.script
+    rm -f ${systemd_dir}/download.timer # remove old service
+    rm -f ${systemd_dir}/netfilter.download.timer
+    cp ${dir}/etc/netfilter.download.timer ${systemd_dir}/netfilter.download.timer
     restart=1
   fi
 
-  diff -q $systemd_dir/netfilter.download.timer $dir/etc/netfilter.download.timer
+  diff -q $NETFILTER/bin/firewall.sh ${dir}/etc/firewall.sh
   if [ $? != 0 ]; then
-    sudo rm -f ${systemd_dir}/download.timer # remove old service
-    sudo rm -f ${systemd_dir}/netfilter.download.timer
-    sudo cp ${dir}/etc/netfilter.download.timer ${systemd_dir}/netfilter.download.timer
+    rm -f ${NETFILTER}/bin/firewall.sh
+    cp ${dir}/etc/firewall.sh ${NETFILTER}/bin/firewall.sh
     restart=1
   fi
 
   # DONT update syslogd with unique mac
   loggly=/etc/rsyslog.d/22-loggly.conf
-  if [ -f "$loggly" ]; then
-    sudo rm $loggly
+  rm -f $loggly # remove old file
+
+  local curversion=`$NETFILTER/bin/netfilter -v`
+  if [ $? -ne 0 ]; then
+    curversion="noversion"
   fi
 
-  newversion=`${NETFILTER}/netfilter_${mode}/bin/netfilter -v`
+  local newversion=`${NETFILTER}/netfilter_${mode}/bin/netfilter -v`
   if [ $? -ne 0 ]; then
     newversion="noversion"
   fi
 
   if [ "$curversion" != "$newversion" ]; then
+    cp ${NETFILTER}/netfilter_${mode}/bin/netfilter ${NETFILTER}/bin/netfilter
     restart=1
   fi
 
   if [ $restart -eq 1 ]; then
     echo "netfilter updated to $curversion in $mode. Restarting...."
-
-    exit 
-
-    sudo /bin/systemctl daemon-reload
-    sudo systemctl enable rsyslog.service
-    sudo systemctl enable netfilter.download.timer
-    sudo systemctl enable netfilter.download.service
-    sudo systemctl enable netfilter.service
-    sudo systemctl restart netfilter.service
-    sudo systemctl restart netfilter.download.timer
-    #sudo systemctl restart rsyslog.service
+    /bin/systemctl daemon-reload
+    systemctl enable rsyslog.service
+    systemctl enable netfilter.download.timer
+    systemctl enable netfilter.download.service
+    systemctl enable netfilter.service
+    systemctl restart netfilter.service
+    systemctl restart netfilter.download.timer
+    #systemctl restart rsyslog.service
   else 
     echo "netfilter keep current version $curversion in $mode"
   fi 
 }
+
+#
+# Setup netfilter
+#
+NETFILTER=/home/netfilter
 
 if [ ! -d "$NETFILTER/private" ]; then
   mkdir $NETFILTER/private
   chmod 0700 $NETFILTER/private
 fi
 
-echo "private $NETFILTER/private"
-ls -l ${NETFILTER}/private
-    
-mode=`getModeFunction`
-echo "mode $mode"
-
-curversion=`$NETFILTER/netfilter_$mode/bin/netfilter -v`
-if [ $? -ne 0 ]; then
-  curversion="noversion"
-fi
-
-updateRepositoriesFunction $mode
-updateSystemdFunction $mode $curversion
-
+case $1 in
+  setup)  "$1" ;;
+  *) 
+    # August 2020
+    # handle old download system where setup.sh would be called with no parameters
+    # run download script 
+    if [ -d $NETFILTER/netfilter_prod ]; then
+      pushd $NETFILTER/netfilter_prod
+      git pull
+      popd
+    fi
+    if [ -d $NETFILTER/netfilter_test ]; then
+      pushd $NETFILTER/netfilter_test
+      git pull
+      popd
+    fi
+    setup
+  ;;
+esac

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # This scrip is called by systemd
 # see: /etc/systemd/system/download.service
@@ -11,12 +11,104 @@
 #
 #
 
+#
+# Setup netfilter
+#
+NETFILTER=/home/netfilter
+
+git config --global user.email "irai852@gmail.com"
+git config --global user.name "Irai"
+
+getModeFunction() {
+  local mode=prod
+  if [ -f "$NETFILTER/private/config.yaml" ]; then
+    mode=`cat $NETFILTER/private/config.yaml | sed -En 's/ *mode: *\"*([a-fA-F]*)\"*/\1/p'`
+    if [ "$mode" != "test" ] && [ "$mode" != "beta" ] && [ "$mode" != "prod" ]; then
+        mode=prod
+    fi
+  fi
+  echo $mode
+}
+
+# gitPull refresh the git repo
+# $1 - repo location
+# $2 - repo url
+gitPullFunction() {
+  local dir=$1
+  local repo=$2
+  if [ ! -d "$dir" ]; then
+    pushd "$(dirname "$dir")"
+
+    git clone -depth 1 $repo
+    OK=$?
+    popd
+    if [ $OK -ne 0 ]; then
+      echo "failed to clone $repo"
+      rm -rf "$dir"
+      return 1
+    fi
+    return 0
+  else
+    pushd $dir
+    if [ $? -ne 0 ]; then
+      echo "invalid git repo $dir"
+      return 1
+    fi
+    git fetch
+    if [ $? -ne 0 ]; then
+      echo "failed to fetch repo $dir"
+      popd
+      return 1
+    fi
+    local gitwork=`git cherry master origin/master`
+    if [ $? -ne 0 ]; then
+      echo "failed to cherry pick repo $dir"
+      popd
+      return 1
+    fi
+    if [ "$gitwork" != "" ]; then
+      git merge
+      if [ $? -ne 0 ]; then
+        echo "failed to merge pick repo $dir"
+        popd
+        return 1
+      fi
+    fi
+    echo $gitwork
+    popd
+    return 0
+  fi
+}
+
+download() {
+
+  local dir=${NETFILTER}/netfilter_prod
+  local gitrepo="https://github.com/irai/netfilter_prod.git"
+
+  gitPullFunction $dir $gitrepo
+  if [ $? -ne 0 ]; then
+    echo "failed to pull $dir $gitrepo $?"
+  fi
+
+  mode=`getModeFunction`
+
+  if [ "$mode" != "prod" ]; then
+    dir=${NETFILTER}/netfilter_${mode}
+    gitrepo="https://github.com/irai/netfilter_${mode}.git"
+
+    gitPullFunction $dir $gitrepo
+    if [ $? -ne 0 ]; then
+      echo "failed to pull $dir $gitrepo $?"
+    fi
+  fi
+}
+
 start() {
-      bash /home/netfilter/bin/setup.sh
+  download
 }
 
 stop() {
-  echo "stopping"
+  echo "download stopping"
 }
 
 case $1 in

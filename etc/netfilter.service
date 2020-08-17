@@ -13,9 +13,11 @@ ExecStartPre=-/etc/init.d/wicd stop
 ExecStartPre=-/bin/systemctl stop dhcpcd.service
 ExecStartPre=-/usr/bin/pkill dhcpd
 ExecStartPre=-/usr/bin/pkill dhclient
+ExecStartPre=-/home/netfilter/bin/setup.sh download
+ExecStartPre=-/home/netfilter/bin/setup.sh setup
 
-ExecStart=/etc/systemd/system/netfilter.script start
-ExecStop=/etc/systemd/system/netfiler.script stop
+ExecStart=/home/netfilter/bin/netfilter -i "eth0" -script /home/netfilter/bin/firewall.sh
+#ExecStop=/etc/systemd/system/netfilter.script stop
 
 RemainAfterExit=no
 RestartSec=30
