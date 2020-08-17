@@ -82,6 +82,8 @@ gitPullFunction() {
 
 download() {
 
+  echo "netfilter download started"
+
   local dir=${NETFILTER}/netfilter_prod
   local gitrepo="https://github.com/irai/netfilter_prod.git"
 
@@ -112,7 +114,7 @@ stop() {
 }
 
 case $1 in
-  start|stop) "$1" ;;
+  start|stop|download) "$1" ;;
 esac
 
 

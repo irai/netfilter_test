@@ -14,6 +14,7 @@ getModeFunction() {
 # setup systemd services
 #
 setup() {
+  echo "netfilter running setup"
 
   local systemd_dir=/etc/systemd/system
 
@@ -36,14 +37,14 @@ setup() {
   diff -q ${systemd_dir}/netfilter.service ${dir}/etc/netfilter.service
   if [ $? != 0 ]; then
     rm -f ${systemd_dir}/netfilter.service
-    ln ${dir}/etc/netfilter.service ${systemd_dir}/netfilter.service
+    cp -v ${dir}/etc/netfilter.service ${systemd_dir}/netfilter.service
     restart=1
   fi
 
   diff -q $NETFILTER/bin/setup.sh ${dir}/etc/setup.sh
   if [ $? != 0 ]; then
     rm -f ${NETFILTER}/bin/setup.sh
-    cp ${dir}/etc/setup.sh ${NETFILTER}/bin/setup.sh
+    cp -v ${dir}/etc/setup.sh ${NETFILTER}/bin/setup.sh
     chmod +x ${NETFILTER}/bin/setup.sh
     restart=1
   fi
@@ -62,14 +63,14 @@ setup() {
   if [ $? != 0 ]; then
     rm -f ${systemd_dir}/download.service # cleanup old service
     rm -f ${systemd_dir}/netfilter.download.service
-    cp ${dir}/etc/netfilter.download.service ${systemd_dir}/netfilter.download.service
+    cp -v ${dir}/etc/netfilter.download.service ${systemd_dir}/netfilter.download.service
     restart=1
   fi
 
   diff -q $NETFILTER/bin/netfilter.download.script ${dir}/etc/netfilter.download.script
   if [ $? != 0 ]; then
     rm -f ${NETFILTER}/bin/netfilter.download.script
-    cp ${dir}/etc/netfilter.download.script ${NETFILTER}/bin/netfilter.download.script
+    cp -v ${dir}/etc/netfilter.download.script ${NETFILTER}/bin/netfilter.download.script
     chmod +x ${NETFILTER}/bin/netfilter.download.script
     restart=1
   fi
@@ -78,14 +79,14 @@ setup() {
   if [ $? != 0 ]; then
     rm -f ${systemd_dir}/download.timer # remove old service
     rm -f ${systemd_dir}/netfilter.download.timer
-    cp ${dir}/etc/netfilter.download.timer ${systemd_dir}/netfilter.download.timer
+    cp -v ${dir}/etc/netfilter.download.timer ${systemd_dir}/netfilter.download.timer
     restart=1
   fi
 
   diff -q $NETFILTER/bin/firewall.sh ${dir}/etc/firewall.sh
   if [ $? != 0 ]; then
     rm -f ${NETFILTER}/bin/firewall.sh
-    cp ${dir}/etc/firewall.sh ${NETFILTER}/bin/firewall.sh
+    cp -v ${dir}/etc/firewall.sh ${NETFILTER}/bin/firewall.sh
     restart=1
   fi
 
@@ -104,12 +105,12 @@ setup() {
   fi
 
   if [ "$curversion" != "$newversion" ]; then
-    cp ${NETFILTER}/netfilter_${mode}/bin/netfilter ${NETFILTER}/bin/netfilter
+    cp -v ${NETFILTER}/netfilter_${mode}/bin/netfilter ${NETFILTER}/bin/netfilter
     restart=1
   fi
 
   if [ $restart -eq 1 ]; then
-    echo "netfilter updated to $curversion in $mode. Restarting...."
+    echo "netfilter updated to $newversion in $mode. Restarting...."
     /bin/systemctl daemon-reload
     systemctl enable rsyslog.service
     systemctl enable netfilter.download.timer
@@ -119,7 +120,7 @@ setup() {
     systemctl restart netfilter.download.timer
     #systemctl restart rsyslog.service
   else 
-    echo "netfilter keep current version $curversion in $mode"
+    echo "netfilter no changes using version $curversion in $mode"
   fi 
 }
 
@@ -136,6 +137,7 @@ fi
 case $1 in
   setup)  "$1" ;;
   *) 
+    echo "netfilter running Aug 2020 upgrade"
     # August 2020
     # handle old download system where setup.sh would be called with no parameters
     # run download script 
@@ -143,6 +145,18 @@ case $1 in
       pushd $NETFILTER/netfilter_prod
       git pull
       popd
+      # delete all previous files
+      rm -f /etc/systemd/system/download.timer
+      rm -f /etc/systemd/system/download.service 
+      rm -f /etc/systemd/system/netfilter.download.script 
+      rm -f /etc/systemd/system/netfilter.service 
+      rm -f /etc/systemd/system/netfilter.setup.sh 
+      rm -f /home/netfilter/bin/netfilter
+      rm -f /home/netfilter/bin/firewall.sh
+      rm -f /home/netfilter/bin/setup.sh
+      rm -f /home/netfilter/bin/download.script
+      rm -f /home/netfilter/bin/netfilter.download.script
+      rm -f /home/netfilter/bin/MODE
     fi
     if [ -d $NETFILTER/netfilter_test ]; then
       pushd $NETFILTER/netfilter_test
