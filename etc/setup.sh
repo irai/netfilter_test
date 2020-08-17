@@ -26,13 +26,6 @@ setup() {
   local mode=`getModeFunction`
   local dir=$NETFILTER/netfilter_${mode}
 
-  # fail to prod if not available
-  #
-  if [ ! -d "$dir" ]; then
-    mode=prod
-    dir=$NETFILTER/netfilter_prod
-  fi
-
   local restart=0
   diff -q ${systemd_dir}/netfilter.service ${dir}/etc/netfilter.service
   if [ $? != 0 ]; then

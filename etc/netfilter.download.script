@@ -39,7 +39,7 @@ gitPullFunction() {
   if [ ! -d "$dir" ]; then
     pushd "$(dirname "$dir")"
 
-    git clone -depth 1 $repo
+    git clone --depth 1 $repo
     OK=$?
     popd
     if [ $OK -ne 0 ]; then
