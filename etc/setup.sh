@@ -164,44 +164,44 @@ updateSystemdFunction() {
   fi
      
   local restart=0
-  diff $systemd_dir/netfilter.service $dir/etc/netfilter.service
-  if [ $? == 1 ]; then
-    sudo rm ${systemd_dir}/netfilter.service
+  diff -q $systemd_dir/netfilter.service $dir/etc/netfilter.service
+  if [ $? != 0 ]; then
+    sudo rm -f ${systemd_dir}/netfilter.service
     sudo ln ${dir}/etc/netfilter.service ${systemd_dir}/netfilter.service
     restart=1
   fi
 
-  diff $systemd_dir/netfilter.script $dir/etc/netfilter.script
-  if [ $? == 1 ]; then
-    sudo rm ${systemd_dir}/netfilter.script
+  diff -q $systemd_dir/netfilter.script $dir/etc/netfilter.script
+  if [ $? != 0 ]; then
+    sudo rm -f ${systemd_dir}/netfilter.script
     sudo cp ${dir}/etc/netfilter.service ${systemd_dir}/netfilter.script
     restart=1
   fi
 
-  diff $systemd_dir/netfilter.setup.sh $dir/etc/setup.sh
-  if [ $? == 1 ]; then
-    sudo rm ${systemd_dir}/netfilter.setup.sh
+  diff -q $systemd_dir/netfilter.setup.sh $dir/etc/setup.sh
+  if [ $? != 0 ]; then
+    sudo rm -f ${systemd_dir}/netfilter.setup.sh
     sudo cp ${dir}/etc/setup.sh ${systemd_dir}/netfilter.setup.sh
     restart=1
   fi
 
-  diff $systemd_dir/netfilter.download.service $dir/etc/netfilter.download.service
-  if [ $? == 1 ]; then
+  diff -q $systemd_dir/netfilter.download.service $dir/etc/netfilter.download.service
+  if [ $? != 0 ]; then
     sudo rm -f ${systemd_dir}/download.service # cleanup old service
     sudo rm -f ${systemd_dir}/netfilter.download.service
     sudo cp ${dir}/etc/netfilter.download.service ${systemd_dir}/netfilter.download.service
     restart=1
   fi
 
-  diff $systemd_dir/netfilter.download.script $dir/etc/netfilter.download.script
-  if [ $? == 1 ]; then
+  diff -q $systemd_dir/netfilter.download.script $dir/etc/netfilter.download.script
+  if [ $? != 0 ]; then
     sudo rm -f ${systemd_dir}/netfilter.download.script
     sudo cp ${dir}/etc/netfilter.download.script ${systemd_dir}/netfilter.download.script
     restart=1
   fi
 
-  diff $systemd_dir/netfilter.download.timer $dir/etc/netfilter.download.timer
-  if [ $? == 1 ]; then
+  diff -q $systemd_dir/netfilter.download.timer $dir/etc/netfilter.download.timer
+  if [ $? != 0 ]; then
     sudo rm -f ${systemd_dir}/download.timer # remove old service
     sudo rm -f ${systemd_dir}/netfilter.download.timer
     sudo cp ${dir}/etc/netfilter.download.timer ${systemd_dir}/netfilter.download.timer
