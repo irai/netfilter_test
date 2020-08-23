@@ -36,12 +36,11 @@ getModeFunction() {
 gitPullFunction() {
   local dir=$1
   local repo=$2
-  if [ ! -d "$dir" ]; then
-    pushd "$(dirname "$dir")"
 
-    git clone --depth 1 $repo
+  echo "git download $dir $repo"
+  if [ ! -d "$dir" ]; then
+    git -C $dir clone --depth 1 $repo
     OK=$?
-    popd
     if [ $OK -ne 0 ]; then
       echo "failed to clone $repo"
       rm -rf "$dir"
@@ -49,33 +48,27 @@ gitPullFunction() {
     fi
     return 0
   else
-    pushd $dir
-    if [ $? -ne 0 ]; then
-      echo "invalid git repo $dir"
-      return 1
-    fi
-    git fetch
+    git -C $dir fetch
     if [ $? -ne 0 ]; then
       echo "failed to fetch repo $dir"
-      popd
       return 1
     fi
-    local gitwork=`git cherry master origin/master`
+    local gitwork=`git -C $dir cherry master origin/master`
     if [ $? -ne 0 ]; then
       echo "failed to cherry pick repo $dir"
-      popd
       return 1
     fi
     if [ "$gitwork" != "" ]; then
-      git merge
+      git -C $dir merge
       if [ $? -ne 0 ]; then
         echo "failed to merge pick repo $dir"
-        popd
         return 1
       fi
+      echo "succefully git fetch and merge"
+      echo `git -C $dir status`
+    else
+      echo "git download nothing to do"
     fi
-    echo $gitwork
-    popd
     return 0
   fi
 }
@@ -84,25 +77,24 @@ download() {
 
   echo "netfilter download started"
 
-  local dir=${NETFILTER}/netfilter_prod
-  local gitrepo="https://github.com/irai/netfilter_prod.git"
+  mode=`getModeFunction`
+
+  local dir=${NETFILTER}/netfilter_${mode}
+  local gitrepo="https://github.com/irai/netfilter_${mode}.git"
+
+  # dont't download is using detached head
+  # it means the device was manually set to a previous version
+  detached=`git -C $dir status | sed -En 's/.*(HEAD detached .*).*/\1/p'`
+  if [ "$detached" != "" ]; then
+     echo "Using $detached"
+     return
+  fi
 
   gitPullFunction $dir $gitrepo
   if [ $? -ne 0 ]; then
     echo "failed to pull $dir $gitrepo $?"
   fi
 
-  mode=`getModeFunction`
-
-  if [ "$mode" != "prod" ]; then
-    dir=${NETFILTER}/netfilter_${mode}
-    gitrepo="https://github.com/irai/netfilter_${mode}.git"
-
-    gitPullFunction $dir $gitrepo
-    if [ $? -ne 0 ]; then
-      echo "failed to pull $dir $gitrepo $?"
-    fi
-  fi
 }
 
 start() {
