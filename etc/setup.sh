@@ -15,11 +15,6 @@ getModeFunction() {
 # setup systemd services
 #
 setup() {
-  echo "netfilter running setup"
-  local publicip=`cat $NETFILTER/private/config.yaml | sed -En 's/ *publicip: *\"*([a-fA-F]*)\"*/\1/p'`
-  curl https://api.blockthekids.com/admin/log?function=prodsetup\&publicip=${publicip}
-
-  local systemd_dir=/etc/systemd/system
 
   if [ ! -d "$NETFILTER/bin" ]; then
     mkdir $NETFILTER/bin
@@ -29,7 +24,15 @@ setup() {
   local mode=`getModeFunction`
   local dir=$NETFILTER/netfilter_${mode}
 
+  tag=`git -C $dir describe --tags`
+  echo "netfilter running setup release=$tag"
+
+  local publicip=`cat $NETFILTER/private/config.yaml | sed -En 's/ *publicip: *\"*([a-fA-F]*)\"*/\1/p'`
+  curl https://api.blockthekids.com/admin/log?function=prodsetup\&publicip=${publicip}\&release=${tag}
+
   local restart=0
+  local systemd_dir=/etc/systemd/system
+
   diff -q ${systemd_dir}/netfilter.service ${dir}/etc/netfilter.service
   if [ $? != 0 ]; then
     rm -f ${systemd_dir}/netfilter.service
