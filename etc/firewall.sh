@@ -38,28 +38,28 @@ fi
 echo "Host:" $HOST
 
 # enable IP forwarding
-sudo echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward
+#sudo echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward
 
 # disable ICMP redirects
 # to prevent client sending directly to the gateway
-echo 0 | sudo tee /proc/sys/net/ipv4/conf/*/send_redirects 
+#echo 0 | sudo tee /proc/sys/net/ipv4/conf/*/send_redirects 
 
-sudo modprobe ip_tables
-sudo modprobe ip_conntrack
+#sudo modprobe ip_tables
+#sudo modprobe ip_conntrack
 
 
 # disable DHCP client
 # see: https://help.ubuntu.com/community/NetworkConfigurationCommandLine/Automatic
-sudo /etc/init.d/network-manager stop
-sudo /etc/init.d/wicd stop
+#sudo /etc/init.d/network-manager stop
+#sudo /etc/init.d/wicd stop
 
 # remove from init.d
 # sudo update-rc.d -f NetworkManager remove
 # Reverse: sudo update-rc.d -f NetworkManager defaults 50
 
 
-sudo iptables -t nat -F
-sudo iptables -t filter -F 
+#sudo iptables -t nat -F
+#sudo iptables -t filter -F 
 
 
 # Setup eth interface
@@ -68,14 +68,14 @@ sudo ifconfig $DEV $HOST netmask 255.255.255.0 up
 sudo route add $ROUTER $DEV
 sudo route add default gw $ROUTER $DEV
 
-sudo iptables -N NETFILTER
-sudo iptables -A FORWARD -j NETFILTER
+#sudo iptables -N NETFILTER
+#sudo iptables -A FORWARD -j NETFILTER
 
 # NAT all DNS requests : this should be the first rule
-sudo iptables -t nat -I POSTROUTING -o $DEV -p udp --dport 53 -j SNAT --to $HOST
-sudo iptables -t nat -I POSTROUTING -o $DEV -p tcp --dport 53 -j SNAT --to $HOST
-sudo iptables -I FORWARD -o $DEV -p udp --dport 53 -m state --state RELATED,ESTABLISHED -j ACCEPT
-sudo iptables -I FORWARD -o $DEV -p tcp --dport 53 -m state --state RELATED,ESTABLISHED -j ACCEPT
+#sudo iptables -t nat -I POSTROUTING -o $DEV -p udp --dport 53 -j SNAT --to $HOST
+#sudo iptables -t nat -I POSTROUTING -o $DEV -p tcp --dport 53 -j SNAT --to $HOST
+#sudo iptables -I FORWARD -o $DEV -p udp --dport 53 -m state --state RELATED,ESTABLISHED -j ACCEPT
+#sudo iptables -I FORWARD -o $DEV -p tcp --dport 53 -m state --state RELATED,ESTABLISHED -j ACCEPT
 
 # to delete a rule
 #sudo iptables -D NETFILTER -s 192.168.0.133 -d 192.168.0.1 -j DROP
@@ -87,11 +87,11 @@ sudo iptables -I FORWARD -o $DEV -p tcp --dport 53 -m state --state RELATED,ESTA
 
 
 #SSH
-sudo iptables -A INPUT -p tcp --dport ssh -j ACCEPT
-sudo iptables -A OUTPUT -p tcp --sport 22 -j ACCEPT
+#sudo iptables -A INPUT -p tcp --dport ssh -j ACCEPT
+#sudo iptables -A OUTPUT -p tcp --sport 22 -j ACCEPT
 
 # Restart syslogd afte interface change
-sudo service rsyslog restart
+#sudo service rsyslog restart
 
 #
 # need to stop dhclient to release bootpc port (68 - client)
