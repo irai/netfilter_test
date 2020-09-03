@@ -82,6 +82,10 @@ download() {
   local dir=${NETFILTER}/netfilter_${mode}
   local gitrepo="https://github.com/irai/netfilter_${mode}.git"
 
+  if [ ! -d "$dir" ]; then
+     mkdir $dir
+  fi
+
   # dont't download is using detached head
   # it means the device was manually set to a previous version
   detached=`git -C $dir status | sed -En 's/.*(HEAD detached .*).*/\1/p'`
