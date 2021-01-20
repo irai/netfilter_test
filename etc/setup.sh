@@ -16,6 +16,10 @@ getModeFunction() {
 #
 setup() {
 
+ # hack to fix Alemaos beta repo
+ rm -rf $NETFILTER/netfilter_beta
+
+
   if [ ! -d "$NETFILTER/bin" ]; then
     mkdir $NETFILTER/bin
     chmod 0770 $NETFILTER/bin
